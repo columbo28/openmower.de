@@ -34,7 +34,15 @@ We have checked that GPS works alone, let's see if it would together with mainbo
 If you don't have dock station assembled and want to save the power in the main mower battery, you can power it from the Pico Dev board MicroUSB port, right below the GPS board. Use a 1A+ power bank, because computer USB port's 500mA might be not enough.
 {{% /alert %}}
 
-Then SSH into OpenMower console. In the home directory there's do `./start_ros_bash.sh` which should take you to a bash inside the docker, then you can do `rostopic list` to list all topics and `rostopic echo -c -w 5  /xbot_driver_gps/xb_pose` to look at the GPS data. There's a position and some accuracy number in meters.
+The openmower Web UI does not always display a good GPS symbol. The mounted GPS board transmits data to the openmower ros, where the position data will can be retriev
+d by the openmower software.
+
+In order to be able to debug the GPS state of your setup, you must connect to your OpenMower device via SSH and execute `./start_ros_bash.sh` which should take you to a bash shell inside of the docker process running on the raspberry pi.
+Now you can execute `rostopic list` to list all exposed (available) topics in ros.
+
+### Verify basic GPS(+RTK) status
+
+To verify the position data from the GPS board, provided by your mower, just execute `rostopic echo -c -w 5 /xbot_driver_gps/xb_pose`:
 
 ```yaml
 header:
@@ -45,3 +53,35 @@ motion_vector_valid: 1
 position_accuracy: 0.021  # this is good
 orientation_accuracy: 3.141
 ```
+
+The values for "position_accuracy" must stay around 0.021, as this indicates that your GPS board is working and you have RTK packets received from your NTrip provider or base station.
+
+Please remember, the accuracy is measured in 'meters'. A value of 0.021 translates to a position accuracy of '2.1cm'.
+
+### Verify GPS distance status
+
+The rover (your mower), takes the coordinates to measure the distance to it's base station.
+
+In order to calculate the "distance" from your mower (rover) to the base station, we need to messure it.
+The 'latitudes' and 'longitudes' coordinates describe the location of your "base station" and must be set in the /boot/openmower/mower_config.txt:
+
+```ini
+
+```
+
+To verify that the position of the "base station" can be measured, execute `rostopic echo -c -w 5 /xbot_driver_gps/xb_pose`:
+
+```yaml
+```
+
+Make sure that the values for "pose" do not display "NaN"! This is a bad sign, because the distance to the base station can not be measured.
+
+### Verify the GPS flags
+
+The openmower ros is using multiple flags to indicate the actual state of the given GPS accuracy.
+
+To verify the actual flag provied by the openmower ros, you can execute `rostopic echo -c -w 5 /xbot_driver_gps/xb_pose`:
+
+A flag of '3' means, that GPS signal from your rover is good and RTK is working.
+
+You can use the following list of flags to understand the values:
